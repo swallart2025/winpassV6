@@ -1,0 +1,31 @@
+require:
+  - rubocop-rails
+
+AllCops:
+  TargetRubyVersion: 3.3
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'db/schema.rb'
+    - 'db/migrate/*'          # DSL de migration, style Rails imposé
+    - 'config/**/*'           # boilerplate généré par Rails
+    - 'bin/**/*'
+    - 'vendor/**/*'
+    - 'spec/**/*'             # les specs suivent le style RSpec (blocs longs attendus)
+
+# Style pragmatique : on cherche un signal UTILE (méthodes trop longues, code
+# mort, complexité cachée), pas un combat cosmétique. Le code métier vise 0 alerte.
+Style/Documentation:
+  Enabled: false
+Metrics/MethodLength:
+  Max: 30
+Metrics/AbcSize:
+  Max: 45
+Metrics/ClassLength:
+  Max: 220
+Metrics/CyclomaticComplexity:
+  Max: 12
+Metrics/PerceivedComplexity:
+  Max: 12
+Layout/LineLength:
+  Max: 140

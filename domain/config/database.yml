@@ -1,0 +1,17 @@
+# La connexion à PostgreSQL est fournie par Docker via la variable DATABASE_URL
+# (voir docker-compose.yml). Aucune installation locale n'est nécessaire.
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+  url: <%= ENV.fetch("DATABASE_URL", "postgres://postgres:postgres@db:5432/winpass") %>
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+  url: <%= ENV.fetch("TEST_DATABASE_URL", "postgres://postgres:postgres@db:5432/winpass_test") %>
+
+production:
+  <<: *default

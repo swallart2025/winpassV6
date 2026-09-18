@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Winpass — Rejoindre le Club</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--line:#334155;--ink:#f8fafc;--ink2:#cbd5e1;--muted:#94a3b8;
+    --accent:#22c55e;--accent2:#4f46e5;--warn:#f59e0b;--err:#ef4444;--radius:16px;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;max-width:460px;margin:0 auto;padding:24px 20px 40px}
+  h1{font-size:22px;margin:0 0 4px} .muted{color:var(--muted);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-top:18px}
+  label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px;font-weight:600}
+  input[type=text]{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:#0b1220;color:var(--ink);font-size:15px}
+  .chk{display:flex;gap:10px;align-items:flex-start;margin:12px 0;font-size:13.5px;color:var(--ink2)}
+  .chk input{margin-top:3px;width:18px;height:18px;flex:none}
+  .chk a{color:var(--accent2)}
+  .btn{width:100%;padding:13px;border:none;border-radius:12px;background:var(--accent);color:#04240f;font-weight:800;font-size:16px;cursor:pointer;margin-top:16px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .msg{margin-top:14px;padding:11px 13px;border-radius:10px;font-size:14px;display:none}
+  .msg.ok{background:#052e16;color:#86efac;display:block}
+  .msg.err{background:#3f1a1a;color:#fca5a5;display:block}
+  .step{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+</style>
+</head>
+<body>
+<h1>Rejoindre le Club Winpass</h1>
+<p class="muted">Vous avez été invité(e). Confirmez votre inscription ci-dessous.</p>
+
+<div class="card" id="form">
+  <div class="step">Vérification e-mail</div>
+  <label>Votre e-mail</label>
+  <input type="text" id="email" placeholder="prenom@exemple.fr">
+  <button class="btn" id="otpBtn" style="margin-top:10px;background:var(--accent2);color:#fff">Recevoir mon code</button>
+
+  <div id="otpZone" style="display:none">
+    <label>Code reçu par e-mail</label>
+    <input type="text" id="otp" placeholder="6 chiffres" inputmode="numeric">
+  </div>
+
+  <label>Nom affiché</label>
+  <input type="text" id="name" placeholder="Prénom N.">
+
+  <div class="chk"><input type="checkbox" id="cgu"><span>J'accepte les <a href="#">Conditions Générales d'Utilisation</a>.</span></div>
+  <div class="chk"><input type="checkbox" id="cgv"><span>J'accepte les <a href="#">Conditions Générales de Vente</a>.</span></div>
+
+  <button class="btn" id="acceptBtn">Valider mon inscription</button>
+  <div class="msg" id="msg"></div>
+</div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const token = q.get('token') || '';
+const $ = (id)=>document.getElementById(id);
+let otpOk = false;
+
+function show(kind, text){ const m=$('msg'); m.className='msg '+kind; m.textContent=text; }
+
+$('otpBtn').onclick = async ()=>{
+  const email = $('email').value.trim();
+  if(!email){ show('err','Renseignez votre e-mail.'); return; }
+  const r = await fetch('/v1/enrollments/otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+  const b = await r.json().catch(()=>({}));
+  $('otpZone').style.display='block';
+  // En dev, le code est renvoyé pour faciliter les tests.
+  show('ok', b.code ? ('Code envoyé (dev : '+b.code+')') : 'Code envoyé par e-mail.');
+};
+
+$('acceptBtn').onclick = async ()=>{
+  if(!token){ show('err','Lien d\'invitation invalide.'); return; }
+  const email = $('email').value.trim(), otp = $('otp').value.trim();
+  if(otp){
+    const v = await fetch('/v1/enrollments/otp/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,code:otp})});
+    if(!v.ok){ show('err','Code invalide ou expiré.'); return; }
+  }
+  if(!$('cgu').checked || !$('cgv').checked){ show('err','Vous devez accepter les CGU et les CGV.'); return; }
+  const r = await fetch('/v1/enrollments/accept',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({token, display_name:$('name').value.trim(), cgu:true, cgv:true})});
+  const b = await r.json().catch(()=>({}));
+  if(r.ok || b.status==='accepted'){
+    show('ok','Bienvenue dans le Club ! Votre n° de membre : '+b.member_id+'.');
+    $('acceptBtn').disabled=true;
+  } else if(b.code==='cgu_cgv_required'){
+    show('err','Acceptation des CGU et CGV obligatoire.');
+  } else {
+    show('err', b.detail || 'Impossible de valider l\'inscription.');
+  }
+};
+</script>
+</body>
+</html>

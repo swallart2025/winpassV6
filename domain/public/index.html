@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Winpass — Suite fidélité (API réelle)</title>
+<style>
+  :root{--bg:#f5f6f8;--surface:#fff;--line:#e5e8ec;--ink:#0f172a;--ink2:#475569;--muted:#94a3b8;
+    --primary:#4f46e5;--primary-weak:#eef2ff;--earn:#15803d;--earn-bg:#e7f6ec;--burn:#b91c1c;--burn-bg:#fdeaea;
+    --gain:#b45309;--gain-bg:#fdf3e3;--exp:#7c3aed;--exp-bg:#f3e8ff;--cic:#0369a1;--cic-bg:#e0f2fe;
+    --radius:12px;--shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.05);}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+  header{background:#111827;color:#fff;padding:14px 22px}
+  header h1{margin:0;font-size:18px;font-weight:650} header p{margin:3px 0 0;color:#c7cdd6;font-size:12.5px}
+  header .live{display:inline-block;margin-left:8px;font-size:11px;font-weight:700;color:#86efac;background:#064e3b;border-radius:20px;padding:2px 9px}
+  .tabs{display:flex;gap:4px;background:#1f2937;padding:0 22px} .tabs button{background:transparent;color:#9aa4b2;border:none;padding:11px 15px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent}
+  .tabs button.active{color:#fff;border-bottom-color:var(--primary)}
+  #banner{display:none;background:#fef3c7;color:#92400e;padding:8px 22px;font-size:12.5px;border-bottom:1px solid #fde68a}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap;padding:12px 22px;background:#111827} .kpi{background:#1f2937;border:1px solid #374151;border-radius:10px;padding:8px 13px;min-width:120px}
+  .kpi .v{font-size:18px;font-weight:700;color:#fff} .kpi .l{font-size:10.5px;color:#9aa4b2;text-transform:uppercase;letter-spacing:.03em}
+  main{padding:16px 22px} .tabpane{display:none} .tabpane.active{display:block}
+  .grid2{display:grid;grid-template-columns:minmax(360px,1fr) minmax(420px,1.15fr);gap:16px;align-items:start} @media(max-width:1000px){.grid2{grid-template-columns:1fr}}
+  .col{display:flex;flex-direction:column;gap:14px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .card>h2{margin:0;padding:12px 15px;font-size:13px;font-weight:650;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card>h2 .tag{font-weight:600;font-size:10.5px;color:var(--primary);background:var(--primary-weak);padding:2px 7px;border-radius:20px} .card .body{padding:14px 15px}
+  label{display:block;font-size:11.5px;color:var(--ink2);margin:0 0 3px;font-weight:600}
+  input,select{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff;color:var(--ink)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px} .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:9px}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:8px;font-weight:600;font-size:13px}
+  .btn{background:var(--primary);color:#fff;padding:9px 14px;width:100%} .btn:hover{filter:brightness(1.07)} .btn:disabled{opacity:.5}
+  .btn.earn{background:var(--earn)} .btn.burn{background:var(--burn)} .btn.rev{background:#c2410c} .btn.exp{background:var(--exp)} .btn.cic{background:var(--cic)}
+  .btn.ghost{background:#fff;color:var(--primary);border:1px solid var(--primary)} .btn.mini{width:auto;padding:5px 10px;font-size:11.5px}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:8px} .sub{font-size:11px;color:var(--muted);margin:0 0 9px}
+  .scenario{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:11px} .scenario h3{margin:0 0 4px;font-size:13px;display:flex;align-items:center;gap:7px} .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .offerline{font-size:11.5px;color:var(--ink2);margin:4px 0 8px;min-height:16px} .offer{color:var(--earn);font-weight:700;background:var(--earn-bg);border-radius:6px;padding:2px 6px;display:inline-block}
+  .io{background:#0f172a;color:#d1fae5;border-radius:10px;padding:11px 13px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto}
+  .io .meth{color:#93c5fd;font-weight:700} .io .sep{color:#64748b} .io .ok{color:#86efac} .io .err{color:#fca5a5}
+  table{width:100%;border-collapse:collapse;font-size:12.5px} th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line);font-weight:700}
+  td{padding:7px 8px;border-bottom:1px solid #f1f4f7;vertical-align:middle} tr.expired{background:#faf5ff;color:var(--muted)} tr.consumed{background:#f8fafc;color:var(--muted)}
+  .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .tag2{display:inline-block;font-size:9.5px;font-weight:700;text-transform:uppercase;padding:1px 6px;border-radius:5px}
+  .t-active{background:var(--earn-bg);color:var(--earn)} .t-expired{background:var(--exp-bg);color:var(--exp)} .t-consumed{background:#e2e8f0;color:#475569} .t-cur{background:var(--earn-bg);color:var(--earn)} .t-old{background:#e2e8f0;color:#475569}
+  .bar{height:6px;border-radius:4px;background:#eef2f7;overflow:hidden;margin-top:3px}.bar>i{display:block;height:100%;background:var(--earn)}
+  .dinp{width:135px;padding:4px 6px;font-size:12px} .rinp{width:70px;padding:4px 6px;font-size:12px;text-align:right}
+  .member{border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:10px} .member .top{display:flex;justify-content:space-between;align-items:flex-start}
+  .member .name{font-weight:700} .member .badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;text-transform:uppercase}
+  .badge.parrain{background:var(--gain-bg);color:var(--gain)} .badge.acheteur{background:var(--primary-weak);color:var(--primary)} .badge.both{background:#ecfccb;color:#4d7c0f}
+  .solde{font-size:20px;font-weight:750;font-variant-numeric:tabular-nums;margin:5px 0}
+  .tx{display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;border-top:1px solid #f4f6f9} .tx .amt{font-weight:700}
+  .tx.e .amt{color:var(--earn)} .tx.b .amt{color:var(--burn)} .tx.g .amt{color:var(--gain)} .tx.c .amt{color:var(--cic)} .tx.x .amt{color:var(--exp)}
+  .rel-row{display:grid;grid-template-columns:1fr auto 1fr auto;gap:8px;align-items:center;margin-bottom:7px} .rel-row .arrow{color:var(--muted);font-size:12px}
+  .empty{color:var(--muted);font-style:italic;font-size:12px} .pill{display:inline-block;background:var(--cic-bg);color:var(--cic);border-radius:20px;padding:3px 10px;font-weight:700}
+  code{background:#eef2ff;color:#4338ca;border-radius:4px;padding:1px 5px;font-size:11.5px} footer{padding:14px 22px 30px;color:var(--muted);font-size:11.5px;text-align:center}
+  .morewrap{margin-top:7px} .morewrap>summary{cursor:pointer;color:var(--primary);font-weight:650;font-size:12px;padding:6px 2px;list-style:none;user-select:none} .morewrap>summary::-webkit-details-marker{display:none} .morewrap>summary::before{content:'▸ ';color:var(--muted)} .morewrap[open]>summary::before{content:'▾ '} .morewrap[open]>summary{margin-bottom:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Winpass — Suite fidélité <span class="live">API réelle · PostgreSQL</span></h1>
+  <p>Tableau de bord + Lots/Expiration + Comportemental + Paramétrage versionné. Chaque action appelle l'API Rails ; tout est persistant en base.</p>
+</header>
+<div class="tabs" id="tabs">
+  <button class="active" data-t="dash">📊 Tableau de bord</button>
+  <button data-t="orders">📦 Commandes</button>
+  <button data-t="lots">🧾 Lots &amp; Expiration</button>
+  <button data-t="behav">🧠 Comportemental</button>
+  <button data-t="v5">✨ V5 · Générosité</button>
+  <button data-t="cfg">⚙️ Paramétrage</button>
+</div>
+<div id="banner"></div>
+<div class="kpis" id="kpis"></div>
+
+<main>
+  <div class="tabpane active" id="pane-dash"><div class="grid2">
+    <div class="col">
+      <div class="card"><h2>1 · Réseau de parrainage <span class="tag">en amont</span></h2><div class="body">
+        <div id="relEditor"><span class="empty">Chargement…</span></div><button class="btn ghost" id="applyBtn" onclick="applyRelations()">Appliquer les relations</button></div></div>
+      <div class="card"><h2>2 · Scénarios — client API <span class="tag">POST</span></h2><div class="body">
+        <div class="scenario"><h3><span class="dot" style="background:var(--earn)"></span> Commande livrée → Earn</h3>
+          <div class="row3"><div><label>Acheteur</label><select id="e_member" onchange="updateOffers()"></select></div><div><label>Montant (€)</label><input id="e_amount" value="400" oninput="updateOffers()"></div><div><label>Commission</label><input id="e_rate" value="0.02"></div></div>
+          <div class="row3"><div><label>Enseigne</label><select id="e_merchant" onchange="updateOffers()"></select></div><div><label>N° commande</label><input id="e_order" value="1001"></div><div><label>Date d'achat</label><input type="date" id="e_date"></div></div>
+          <div class="offerline" id="e_offer"></div><button class="btn earn" onclick="doEarn()">POST /v1/purchases — earn</button></div>
+        <div class="scenario"><h3><span class="dot" style="background:var(--burn)"></span> Achat + points → Earn + Burn (FEFO)</h3>
+          <div class="row3"><div><label>Acheteur</label><select id="p_member" onchange="updateOffers()"></select></div><div><label>Montant total (€)</label><input id="p_amount" value="400" oninput="updateOffers()"></div><div><label>Commission</label><input id="p_rate" value="0.02"></div></div>
+          <div class="row3"><div><label>Enseigne</label><select id="p_merchant" onchange="updateOffers()"></select></div><div><label>N° commande</label><input id="p_order" value="2001"></div><div><label>Payé en points (€)</label><input id="p_points" value="2.00"></div></div>
+          <div class="row" style="margin-bottom:0"><div><label>Date d'achat</label><input type="date" id="p_date"></div><div></div></div>
+          <div class="offerline" id="p_offer"></div><button class="btn burn" onclick="doPurchase()">POST /v1/purchases — earn + burn</button></div>
+        <div class="scenario"><h3><span class="dot" style="background:#c2410c"></span> Annulation → Reversal</h3>
+          <div class="row"><div><label>N° commande</label><input id="r_order" value="2001"></div><div style="display:flex;align-items:flex-end"><button class="btn rev" onclick="doReversal()">POST /v1/reversals</button></div></div></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <div class="card"><h2>Membres — état des comptes <span class="tag">live · base</span></h2><div class="body"><div id="members"><span class="empty">Chargement…</span></div></div></div>
+      <div class="card"><h2>Journal API <span class="tag">requête + réponse</span></h2><div class="body"><div class="io" id="io">—</div></div></div>
+    </div>
+  </div></div>
+
+  <div class="tabpane" id="pane-orders">
+    <div class="card"><h2>Commandes <span class="tag">GET /v1/orders</span></h2><div class="body">
+      <p class="hint" style="margin-top:0">Vue reconstituée depuis les journaux (earn_ledgers / payments / reversals) : n° de commande, acheteur, enseigne, montant, earn total distribué (personnel + parrainage), points dépensés (burn) et statut d'annulation.</p>
+      <div style="overflow-x:auto"><table id="orders"><thead><tr><th>N°</th><th>Acheteur</th><th>Enseigne</th><th class="num">Montant</th><th>Date</th><th class="num">Earn distribué</th><th class="num">Bénéf.</th><th class="num">Burn</th><th>Statut</th></tr></thead><tbody id="orderBody"></tbody></table></div>
+      <div id="orderMore"></div>
+      <p class="hint" id="orderEmpty">Aucune commande — fais un achat depuis l'onglet Tableau de bord.</p></div></div>
+  </div>
+
+  <div class="tabpane" id="pane-lots">
+    <div class="card"><h2>Batch — traitement de l'expiration <span class="tag">POST /v1/expirations/run</span></h2><div class="body">
+      <div class="row" style="max-width:520px"><div><label>Date de traitement</label><input type="date" id="asof"></div><div style="display:flex;align-items:flex-end"><button class="btn exp" onclick="runExpiration()">Lancer le batch d'expiration</button></div></div></div></div>
+    <div class="card" style="margin-top:14px"><h2>Lots de fidélité — <code>wallet_lots</code> <span class="tag">fin de validité éditable</span></h2><div class="body">
+      <p class="hint" style="margin-top:0">Modifie une date dans <b>Fin de validité</b> (<code>PATCH /v1/lots/:id</code>), puis fais un paiement en points (onglet Tableau de bord) : le FEFO consomme le lot qui expire le plus tôt.</p>
+      <div style="overflow-x:auto"><table id="lots"><thead><tr><th>#</th><th>Membre</th><th>Origine</th><th class="num">Initial</th><th class="num">Remaining</th><th>Acquis</th><th>Fin de validité</th><th>Statut</th></tr></thead><tbody id="lotBody"></tbody></table></div>
+      <div id="lotMore"></div></div></div>
+  </div>
+
+  <div class="tabpane" id="pane-behav"><div class="grid2">
+    <div class="col">
+      <div class="card"><h2>Batch mensuel comportemental <span class="tag">POST /v1/behavioral/run</span></h2><div class="body">
+        <p class="sub">Potentiel = 15 % du budget de commission cumulé. Récompense = potentiel × taux (score d'adhésion). Reliquat → CIC.</p>
+        <div class="row" style="max-width:420px"><div><label>Période</label><input id="bm_period" value="2026-09"></div><div style="display:flex;align-items:flex-end"><button class="btn cic" onclick="runMonthly()">Lancer le batch mensuel</button></div></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn rev mini" style="width:auto" onclick="purgeMonthly()">Purger le mois</button><span class="hint" style="margin:0">Remet le mois à zéro (point barre). Le batch peut ensuite être relancé. Le batch mensuel ne se lance qu'une fois par mois (anti-double-paiement) : pour rejouer, purge d'abord.</span></div>
+        <div style="margin-top:10px">Cagnotte CIC : <span class="pill" id="cicBal">0,00 €</span></div></div></div>
+      <div class="card"><h2>Photos mensuelles <span class="tag">MemberMonthlyReward</span></h2><div class="body">
+        <div style="overflow-x:auto"><table id="reports"><thead><tr><th>Période</th><th>Membre</th><th class="num">Potentiel</th><th class="num">Score</th><th class="num">Taux</th><th class="num">Récomp.</th><th class="num">→ CIC</th></tr></thead><tbody id="repBody"></tbody></table></div>
+        <p class="hint" id="repEmpty">Aucun batch mensuel lancé.</p></div></div>
+      <div class="card"><h2>Campagnes <span class="tag">financées par la CIC</span></h2><div class="body">
+        <div class="row3"><div><label>Catégorie</label><select id="cp_cat"></select></div><div><label>Type</label><select id="cp_type"><option value="value">Valeur (€)</option><option value="percent">% commande</option></select></div><div><label>Bonus</label><input id="cp_val" value="5"></div></div>
+        <div class="row3"><div><label>Éligible si score ≤</label><input id="cp_seuil" value="20"></div><div><label>Date de fin</label><input type="date" id="cp_end" value="2026-12-31"></div><div><label>Budget (€)</label><input id="cp_budget" value="1.00"></div></div>
+        <div class="hint" style="margin:2px 0 6px">Fonds CIC disponibles : <b id="cp_fonds" style="color:var(--cic)">0,00 €</b></div>
+        <div class="row" style="grid-template-columns:1fr auto;margin-bottom:8px;align-items:end"><div><label>Créditer la CIC (banc d'essai)</label><input id="cic_amount" placeholder="Montant € à créditer"></div><button class="btn cic mini" style="width:auto" onclick="creditCic()">+ Créditer</button></div>
+        <div class="hint" style="margin:0 0 8px">Astuce : un budget de campagne supérieur aux fonds CIC est accepté — la CIC est abondée automatiquement du manque.</div>
+        <button class="btn ghost" onclick="createCampaign()">Créer &amp; déclencher</button><div id="campaigns" style="margin-top:8px"></div></div></div>
+    </div>
+    <div class="col">
+      <div class="card"><h2>Cagnottes centrales <span class="tag">soldes en base</span></h2><div class="body">
+        <div id="pools"><span class="empty">Chargement…</span></div>
+        <p class="hint" style="margin-bottom:0">Répartition du budget de commission : Fonctionnement 12,5 %, Grands leaders 7,5 %, Comportemental 15 % (distribué par le batch mensuel, reliquat → CIC). La CIC finance les campagnes (réserve à la création, reliquat rendu à la clôture).</p></div></div>
+      <div class="card"><h2>Score d'adhésion — détail & émulation <span class="tag">GET /v1/behavioral/score</span></h2><div class="body">
+        <p class="sub">Choisis un membre et « voyage dans le temps » : le score de chaque catégorie décroît (mensuel, bi-hebdo pour les validités 1 mois) puis se recharge après un achat. Antidate un achat (onglet Tableau de bord, champ « Date d'achat »), reviens ici et avance le temps pour visualiser la dégressivité.</p>
+        <div class="row3"><div><label>Membre</label><select id="sc_member"></select></div><div><label>Date de calcul</label><input type="date" id="sc_date"></div><div style="display:flex;align-items:flex-end"><button class="btn cic mini" style="width:100%" onclick="loadScore()">Calculer</button></div></div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin:2px 0 10px">
+          <button class="btn ghost mini" onclick="emulate(0)">Aujourd'hui</button>
+          <button class="btn ghost mini" onclick="emulate(1)">+1 mois</button>
+          <button class="btn ghost mini" onclick="emulate(2)">+2 mois</button>
+          <button class="btn ghost mini" onclick="emulate(3)">+3 mois</button>
+          <button class="btn ghost mini" onclick="emulate(6)">+6 mois</button>
+          <button class="btn ghost mini" onclick="emulate(12)">+12 mois</button>
+        </div>
+        <div id="scoreDetail"><span class="empty">Choisis un membre puis « Calculer ».</span></div></div></div>
+      <div class="card"><h2>Table marchand → catégorie <span class="tag">merchant_categories</span></h2><div class="body">
+        <div style="overflow-x:auto"><table id="mcat"><thead><tr><th>Enseigne</th><th>Catégorie</th><th></th></tr></thead><tbody id="mcatBody"></tbody></table></div>
+        <div class="row" style="margin-top:8px"><div><input id="mc_new" placeholder="Nouvelle enseigne"></div><div style="display:flex;gap:6px"><select id="mc_cat" style="flex:1"></select><button class="btn mini ghost" onclick="addMerchant()">+ (PUT)</button></div></div></div></div>
+    </div>
+  </div></div>
+
+  <div class="tabpane" id="pane-cfg"><div class="grid2">
+    <div class="col">
+      <div class="card"><h2>Répartition du budget <span class="tag">reward_configs</span></h2><div class="body">
+        <div id="rateRows"></div><div id="rateSum" style="font-weight:700;margin:6px 0"></div>
+        <div class="row"><div><label>Libellé de version</label><input id="cfg_label" placeholder="V2-2026"></div><div style="display:flex;align-items:flex-end"><button class="btn" onclick="saveRates()">Enregistrer une version</button></div></div></div></div>
+      <div class="card"><h2>Historique <span class="tag">effective_from/to</span></h2><div class="body"><div style="overflow-x:auto"><table id="cfgHist"><thead><tr><th>Version</th><th>Perso</th><th>Parr.</th><th>Compo.</th><th>Effet</th><th></th></tr></thead><tbody id="cfgHistBody"></tbody></table></div></div></div>
+    </div>
+    <div class="col">
+      <div class="card"><h2>Catégories comportementales <span class="tag">loyalty_categories</span></h2><div class="body">
+        <div style="overflow-x:auto"><table id="catTable"><thead><tr><th>Catégorie</th><th class="num">Max</th><th class="num">Validité</th><th class="num">Montant qualif. (€)</th></tr></thead><tbody id="catBody"></tbody></table></div>
+        <div id="catSum" style="font-weight:700;margin:6px 0"></div>
+        <div class="row"><div><label>Libellé</label><input id="cat_label" placeholder="CAT-V2"></div><div style="display:flex;align-items:flex-end"><button class="btn" onclick="saveCats()">Enregistrer une version</button></div></div>
+        <div style="overflow-x:auto;margin-top:6px"><table id="catHist"><thead><tr><th>Version</th><th>Effet</th><th></th></tr></thead><tbody id="catHistBody"></tbody></table></div></div></div>
+      <div class="card"><h2>Barème d'adhésion <span class="tag">adherence_scale</span></h2><div class="body">
+        <div style="overflow-x:auto"><table id="scaleTable"><thead><tr><th>De</th><th>À</th><th class="num">Taux (%)</th></tr></thead><tbody id="scaleBody"></tbody></table></div>
+        <div class="row" style="margin-top:6px"><div><label>Libellé</label><input id="scale_label" placeholder="BAR-V2"></div><div style="display:flex;align-items:flex-end"><button class="btn" onclick="saveScale()">Enregistrer une version</button></div></div>
+        <div style="overflow-x:auto;margin-top:6px"><table id="scaleHist"><thead><tr><th>Version</th><th>Effet</th><th></th></tr></thead><tbody id="scaleHistBody"></tbody></table></div></div></div>
+    </div>
+  </div></div>
+
+  <div class="tabpane" id="pane-v5"><div class="grid2">
+    <div class="col">
+      <div class="card"><h2>Statut acheteur <span class="tag">POST /v1/status/run</span></h2><div class="body">
+        <p class="sub">Score composite → niveau (20) → freins. Le niveau tenu alimente la Prime de Statut. À l'achat, chacun touche le <b>socle 40 %</b> ; la générosité au-dessus est mensuelle.</p>
+        <div class="row" style="max-width:420px"><div><label>Période</label><input id="v5_status_period" value="2026-09"></div><div style="display:flex;align-items:flex-end"><button class="btn" onclick="runStatus()">Lancer le batch statut</button></div></div>
+        <div id="v5_status_tbl" style="margin-top:8px"><span class="empty">—</span></div></div></div>
+
+      <div class="card"><h2>Prime de performance collective de Statut <span class="tag">POST /v1/prime-statut/run</span></h2><div class="body">
+        <p class="sub"><b>À quoi ça correspond :</b> au-dessus du <b>socle 40 %</b> acquis à l'achat par tous, une prime <b>mensuelle</b> récompensant chaque membre selon son <b>niveau acheteur (1–20)</b>. <b>Qui :</b> tous les acheteurs, différenciés par niveau. <b>Financée par</b> une <b>poche de 5 %</b> prélevée sur la commission de chaque achat de la période. <b>Pourquoi « collective » :</b> pot commun réparti entre les 20 niveaux selon la <b>rareté</b> (taux par niveau <b>déduit par équation</b>, grille au demi-point, plafond) — ce que touche un niveau dépend de <b>toute la population</b>. Total ≤ poche 5 % ; le reliquat part en <b>réserve reportée</b>. Prime individuelle = taux du niveau × revenus nets de commission.</p>
+        <div class="row3"><div><label>Période</label><input id="v5_prime_period" value="2026-09"></div><div style="display:flex;align-items:flex-end"><button class="btn cic" onclick="runPrime()">Lancer la Prime de Statut</button></div><div style="display:flex;align-items:flex-end"><button class="btn rev" onclick="runPrimePurge()">Purger le mois</button></div></div>
+        <div id="v5_prime_kpi" style="margin-top:8px"></div>
+        <div id="v5_prime_tbl" style="margin-top:6px"><span class="empty">—</span></div></div></div>
+    </div>
+    <div class="col">
+      <div class="card"><h2>Bâtisseurs — rangs &amp; primes <span class="tag">POST /v1/builders</span></h2><div class="body">
+        <p class="sub"><b>Rangs (Score Forêt) :</b> Graine→Canopée selon la taille et l'activité du réseau — il faut <b>≥ 7 filleuls directs qualifiés</b> (niveau acheteur ≥ 5) pour ouvrir un rang. <b>Primes de rang</b> 0→10 % sur l'assiette géométrique, distribuées <b>par trimestre</b> ; le résidu part au pot <b>RFA</b> (garde-fou : un trimestre n'est compté qu'une fois).</p>
+        <div class="row3"><div><label>Mois (rangs)</label><input id="v5_b_period" value="2026-09"></div><div style="display:flex;align-items:flex-end"><button class="btn ghost" onclick="runBuilders()">Batch rangs</button></div><div></div></div>
+        <div class="row3"><div><label>Trimestre (primes)</label><input id="v5_bp_period" value="2026-Q3"></div><div style="display:flex;align-items:flex-end"><button class="btn" onclick="runBuilderPrimes()">Distribuer primes</button></div><div style="display:flex;align-items:flex-end"><button class="btn rev" onclick="runBuilderPrimesPurge()">Purger le trimestre</button></div></div>
+        <div id="v5_b_kpi" style="margin-top:6px"></div>
+        <div id="v5_b_detail" style="margin-top:6px"></div>
+        <div id="v5_b_tbl" style="margin-top:6px"><span class="empty">—</span></div></div></div>
+
+      <div class="card"><h2>Remboursement &amp; solde en attente <span class="tag">POST /v1/refunds</span></h2><div class="body">
+        <p class="sub">Règlement : on reprend le récupérable, on déduit le reste de la carte. Winpass calcule, le marchand exécute (webhook).</p>
+        <div class="row3"><div><label>N° commande</label><input id="v5_r_order" value="1001"></div><div><label>Ratio (1 = total)</label><input id="v5_r_ratio" value="1"></div><div><label>Mode parrains</label><select id="v5_r_mode"><option value="">config (défaut)</option><option value="buyer_covers">acheteur couvre</option><option value="clawback">clawback</option></select></div></div>
+        <button class="btn rev" onclick="doRefund()">Régler le remboursement</button>
+        <div id="v5_r_out" style="margin-top:8px"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px"><button class="btn cic mini" style="width:auto" onclick="activatePending()">Activer les soldes en attente échus</button><span class="hint" style="margin:0">POST /v1/pending/activate</span></div></div></div>
+    </div>
+  </div></div>
+</main>
+<footer>Winpass V5 — cœur V4 (Earn/Burn/Parrainage/Expiration/Campagnes) + statut acheteur, Prime de Statut, Bâtisseurs, remboursement R1–R6 &amp; solde en attente. API réelle sur PostgreSQL.</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const F6=x=>Number(x).toLocaleString('fr-FR',{minimumFractionDigits:6,maximumFractionDigits:6});
+const F2=x=>Number(x).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const TODAY=new Date().toISOString().slice(0,10);
+let S={members:[],lots:[],orders:[],behav:{cic_balance:"0",pools:{},campaigns:[],monthly_reports:[]},mcats:[],cats:{current:{categories:[]},history:[]},scale:{current:{tranches:[]},history:[]},rates:{current:{rates:{}},history:[]}};
+let selInit=false;
+let NEXTORD=1001;           // compteur de commande UNIFIÉ (earn + earn/burn), incrémenté après génération
+let mcatInit=false, scInit=false;
+
+// -------- API + journal --------
+function showIO(req,res){const io=$('io');const cls=(''+res.code).startsWith('2')?'ok':'err';let s=`<span class="sep">REQUÊTE</span> <span class="meth">${req.method}</span> ${req.path}`;if(req.key)s+=`  Idempotency-Key: ${req.key}`;s+=`\n${req.body!==undefined?JSON.stringify(req.body,null,2):'(sans corps)'}\n\n<span class="sep">RÉPONSE</span> <span class="${cls}">${res.code}</span>\n${JSON.stringify(res.body,null,2)}`;io.innerHTML=s;}
+async function api(method,path,body,key){const h={'Content-Type':'application/json'};if(key)h['Idempotency-Key']=key;const o={method,headers:h};if(body!==undefined)o.body=JSON.stringify(body);let code,json;try{const r=await fetch(path,o);code=r.status+' '+r.statusText;const t=await r.text();try{json=t?JSON.parse(t):{};}catch(_){json={raw:t};}}catch(e){code='ÉCHEC réseau';json={error:String(e)};}showIO({method,path,key,body},{code,body:json});if(json&&json.message)flash(json.message);return{code,body:json};}
+function banner(m){const b=$('banner');if(m){b.textContent='⚠ '+m;b.style.background='#fef3c7';b.style.color='#92400e';b.style.display='block';}else b.style.display='none';}
+// Feedback visible d'une action d'écriture (fix B7) : message vert temporaire.
+function flash(m){const b=$('banner');b.textContent='✓ '+m;b.style.background='#dcfce7';b.style.color='#166534';b.style.display='block';clearTimeout(b._t);b._t=setTimeout(()=>{b.style.display='none';},7000);}
+
+async function loadAll(){
+  try{
+    const [me,lo,or,be,mc,ca,sc,rc]=await Promise.all([
+      fetch('/v1/members').then(r=>r.json()), fetch('/v1/lots').then(r=>r.json()),
+      fetch('/v1/orders').then(r=>r.json()), fetch('/v1/behavioral').then(r=>r.json()),
+      fetch('/v1/merchant-categories').then(r=>r.json()),
+      fetch('/v1/loyalty-categories').then(r=>r.json()), fetch('/v1/adherence-scales').then(r=>r.json()),
+      fetch('/v1/reward-configs').then(r=>r.json())]);
+    S={members:me,lots:lo,orders:or,behav:be,mcats:mc,cats:ca,scale:sc,rates:rc}; banner('');
+    syncNextOrder();
+  }catch(e){ banner("Impossible de joindre l'API (le serveur démarre peut-être encore)."); }
+  render();
+}
+
+// -------- actions --------
+function iv(id){return $(id).value.replace(',','.');}
+// Date d'un champ <input type=date> -> ISO à 12:00 (antidatage). Vide -> maintenant.
+function dt(id){const v=$(id)&&$(id).value;return v?new Date(v+'T12:00:00').toISOString():new Date().toISOString();}
+// Compteur de commande UNIFIÉ : les deux formulaires partagent la même série.
+function setOrderFields(){if($('e_order'))$('e_order').value=NEXTORD;if($('p_order'))$('p_order').value=NEXTORD;}
+function syncNextOrder(){const ids=(S.orders||[]).map(o=>+o.order_id);const mx=ids.length?Math.max(...ids):1000;NEXTORD=Math.max(NEXTORD,mx+1);setOrderFields();}
+function afterPurchase(used){NEXTORD=Math.max(NEXTORD,used+1);if($('r_order'))$('r_order').value=used;setOrderFields();}
+async function doEarn(){const id=parseInt($('e_order').value)||NEXTORD;await api('POST','/v1/purchases',{order_id:id,member_id:+$('e_member').value,order_amount:iv('e_amount'),commission_rate:iv('e_rate'),merchant_id:$('e_merchant').value,points_redeemed:"0",delivered_at:dt('e_date')},'ord-'+id);afterPurchase(id);await loadAll();}
+async function doPurchase(){const id=parseInt($('p_order').value)||NEXTORD;await api('POST','/v1/purchases',{order_id:id,member_id:+$('p_member').value,order_amount:iv('p_amount'),commission_rate:iv('p_rate'),merchant_id:$('p_merchant').value,points_redeemed:iv('p_points'),delivered_at:dt('p_date')},'ord-'+id);afterPurchase(id);await loadAll();}
+async function doReversal(){const id=parseInt($('r_order').value)||0;await api('POST','/v1/reversals',{order_id:id},'rev-'+id);await loadAll();}
+async function applyRelations(){const relations=[...document.querySelectorAll('[data-child]')].map(s=>({member_id:+s.dataset.child,sponsor_member_id:s.value?+s.value:null}));$('applyBtn').disabled=true;await api('PUT','/v1/sponsorships',{relations});$('applyBtn').disabled=false;await loadAll();}
+async function patchLot(id,val){await api('PATCH','/v1/lots/'+id,{expires_at:val});await loadAll();}
+async function runExpiration(){const d=$('asof').value||TODAY;await api('POST','/v1/expirations/run',{as_of:d},'exp-'+d+'-'+Date.now());await loadAll();}
+// Score d'adhésion à une date (détail par catégorie) + émulation temporelle.
+async function loadScore(){const mid=$('sc_member').value;if(!mid)return;const d=$('sc_date').value||TODAY;const r=await fetch('/v1/behavioral/score?member_id='+mid+'&as_of='+encodeURIComponent(d)).then(x=>x.json());renderScore(r,d);}
+function emulate(months){const base=new Date();base.setMonth(base.getMonth()+months);$('sc_date').value=base.toISOString().slice(0,10);loadScore();}
+async function runMonthly(){const p=$('bm_period').value;await api('POST','/v1/behavioral/run',{period:p},'behav-'+p+'-'+Date.now());await loadAll();}
+// Purge « point barre » : remet le mois à zéro. Ne rejoue PAS (relance le batch à la main).
+async function purgeMonthly(){const p=$('bm_period').value;await api('POST','/v1/behavioral/purge',{period:p},'purge-'+p+'-'+Date.now());await loadAll();}
+async function createCampaign(){await api('POST','/v1/campaigns',{category:$('cp_cat').value,eligibility_score_max:parseInt($('cp_seuil').value)||0,reward_type:$('cp_type').value,reward_value:iv('cp_val'),budget_reserved:iv('cp_budget'),end_date:$('cp_end').value||null});await loadAll();}
+// Abondement manuel de la CIC (banc d'essai) pour financer les campagnes.
+async function creditCic(){const a=($('cic_amount').value||'').replace(',','.');if(!(parseFloat(a)>0))return;await api('POST','/v1/cic/credit',{amount:a},'cic-'+Date.now());$('cic_amount').value='';await loadAll();}
+async function addMerchant(){const m=$('mc_new').value.trim().toUpperCase();if(!m)return;const entries=[...S.mcats.map(x=>({merchant_id:x.merchant_id,category:x.category})),{merchant_id:m,category:$('mc_cat').value}];await api('PUT','/v1/merchant-categories',{entries});$('mc_new').value='';await loadAll();}
+async function saveRates(){const rates={};['personal','sponsorship','fonctionnement','comportemental','grands_leaders'].forEach(k=>rates[k]=((parseFloat($('rate_'+k).value.replace(',','.'))||0)/100).toString());await api('PUT','/v1/reward-configs',{version_label:$('cfg_label').value,rates});$('cfg_label').value='';await loadAll();}
+async function saveCats(){const categories=S.cats.current.categories.map((c,i)=>({name:c.name,max:parseInt($('cat_max'+i).value)||0,validity_months:parseInt($('cat_val'+i).value)||0,qualifying_min:$('cat_min'+i).value.replace(',','.')}));await api('PUT','/v1/loyalty-categories',{version_label:$('cat_label').value,categories});$('cat_label').value='';await loadAll();}
+async function saveScale(){const tranches=S.scale.current.tranches.map((t,i)=>[parseInt($('sc0'+i).value)||0,parseInt($('sc1'+i).value)||0,parseInt($('sc2'+i).value)||0]);await api('PUT','/v1/adherence-scales',{version_label:$('scale_label').value,tranches});$('scale_label').value='';await loadAll();}
+
+// -------- V5 : nouvelle générosité --------
+let V5={status:[],prime:{rewards:[],reserve:"0"},builders:{statuses:[],reserve:null}};
+async function loadV5(){try{const [st,pr,bu]=await Promise.all([
+  fetch('/v1/status').then(r=>r.json()), fetch('/v1/prime-statut').then(r=>r.json()),
+  fetch('/v1/builders').then(r=>r.json())]);
+  V5={status:st||[],prime:pr||{rewards:[],reserve:"0"},builders:bu||{statuses:[]}};renderV5();}catch(e){}}
+function renderV5(){
+  const st=V5.status||[];$('v5_status_tbl').innerHTML=st.length?('<div style="overflow-x:auto"><table><thead><tr><th>Membre</th><th class="num">Niveau</th><th class="num">Grand niv.</th><th class="num">Repli</th></tr></thead><tbody>'+st.map(s=>`<tr><td>${s.display_name}</td><td class="num" style="font-weight:700">N${s.niveau_tenu}</td><td class="num">${s.grand_niveau}</td><td class="num">${s.compteur_repli||0}</td></tr>`).join('')+'</tbody></table></div>'):'<span class="empty">Aucun statut — lance le batch.</span>';
+  const pr=(V5.prime&&V5.prime.rewards)||[];$('v5_prime_kpi').innerHTML=`Réserve reportée : <span class="pill">${F2((V5.prime&&V5.prime.reserve)||0)} €</span>`;
+  $('v5_prime_tbl').innerHTML=pr.length?('<div style="overflow-x:auto"><table><thead><tr><th>Période</th><th>Membre</th><th class="num">Niv.</th><th class="num">Assiette</th><th class="num">Taux</th><th class="num">Prime</th></tr></thead><tbody>'+pr.map(x=>`<tr><td>${x.period}</td><td>${x.display_name}</td><td class="num">N${x.niveau}</td><td class="num">${F2(x.assiette)} €</td><td class="num" style="font-weight:700;color:var(--primary)">${x.taux}</td><td class="num" style="color:var(--earn);font-weight:700">${F6(x.prime)}</td></tr>`).join('')+'</tbody></table></div>'):'<span class="empty">Aucune prime — lance la Prime de Statut.</span>';
+  const b=(V5.builders&&V5.builders.statuses)||[];const rr=V5.builders&&V5.builders.reserve;
+  $('v5_b_kpi').innerHTML=rr?`Pot RFA ${rr.year} : <span class="pill" style="background:var(--gain-bg);color:var(--gain)">${F2(rr.rfa)} €</span> <span class="hint">(poche ${F2(rr.pocket)} − distribué ${F2(rr.distribue)})</span>`:'';
+  $('v5_b_tbl').innerHTML=b.length?('<div style="overflow-x:auto"><table><thead><tr><th>Membre</th><th>Rang</th><th class="num">Score Forêt</th></tr></thead><tbody>'+b.map(s=>`<tr><td>${s.display_name}</td><td><span class="tag2 t-cur">${s.rang_nom}</span></td><td class="num">${F2(s.score_foret)}</td></tr>`).join('')+'</tbody></table></div>'):'<span class="empty">Aucun Bâtisseur rangé — lance le batch rangs.</span>';
+}
+async function runStatus(){await api('POST','/v1/status/run',{period:$('v5_status_period').value});await loadV5();await loadAll();}
+async function runPrime(){await api('POST','/v1/prime-statut/run',{period:$('v5_prime_period').value});await loadV5();await loadAll();}
+async function runPrimePurge(){await api('POST','/v1/prime-statut/purge',{period:$('v5_prime_period').value});await loadV5();await loadAll();}
+async function runBuilders(){const r=await api('POST','/v1/builders/run',{period:$('v5_b_period').value});renderBuilderDetail((r.body&&r.body.detail)||[]);await loadV5();}
+async function runBuilderPrimes(){await api('POST','/v1/builders/primes/run',{period:$('v5_bp_period').value});await loadV5();await loadAll();}
+async function runBuilderPrimesPurge(){await api('POST','/v1/builders/primes/purge',{period:$('v5_bp_period').value});await loadV5();await loadAll();}
+// Tableau TRANSPARENT du calcul de rang : chaque variable sous-jacente du Score Forêt.
+function renderBuilderDetail(rows){const el=$('v5_b_detail');if(!el)return;if(!rows.length){el.innerHTML='';return;}
+  el.innerHTML='<div style="overflow-x:auto"><table><thead><tr><th>Membre</th><th class="num">Fill. qual.</th><th class="num">Équipe</th><th class="num">Arbre 2d</th><th class="num">Racines</th><th class="num">Activité</th><th class="num">Score Forêt</th><th>Rang</th></tr></thead><tbody>'+rows.map(l=>`<tr><td>${l.display_name} ${l.gate_ouvert?'':'<span class="hint">(gate fermé)</span>'}</td><td class="num">${l.filleuls_qualifies}/${'7'}</td><td class="num">${l.equipe}</td><td class="num">${l.arbre_secondaire}</td><td class="num">${l.racines}</td><td class="num">${l.activite}</td><td class="num" style="font-weight:700">${l.score_foret}</td><td><span class="tag2 t-cur">${l.rang_nom}</span></td></tr>`).join('')+'</tbody></table></div>';
+}
+async function doRefund(){const b={order_id:parseInt($('v5_r_order').value)||0,ratio:($('v5_r_ratio').value||'1').replace(',','.')};const m=$('v5_r_mode').value;if(m)b.sponsor_mode=m;const r=await api('POST','/v1/refunds',b);const s=r.body||{};if(s.card_refund!==undefined){$('v5_r_out').innerHTML=`<div class="scenario" style="margin:0"><div class="tx"><span>Repris aux portefeuilles</span><span class="amt">${F2(s.repris_total)} €</span></div><div class="tx"><span>Déduit de la carte</span><span class="amt" style="color:var(--burn)">${F2(s.deduction.total)} €</span></div><div class="tx"><span><b>À rembourser sur carte</b></span><span class="amt" style="color:var(--earn)">${F2(s.card_refund)} €</span></div></div>`;}await loadAll();}
+async function activatePending(){await api('POST','/v1/pending/activate',{});await loadAll();}
+
+// -------- offres campagne (temps réel, calculé côté client) --------
+function catOfMerchant(m){const e=S.mcats.find(x=>x.merchant_id===m);return e?e.category:null;}
+function memberOfferFor(mid,merchant,amount){const cat=catOfMerchant(merchant);if(!cat)return {cat:null};const mem=S.members.find(x=>x.member_id===mid);if(!mem)return{cat};const off=(mem.campaign_offers||[]).find(o=>o.category===cat);if(!off)return{cat};const bonus=off.reward_type==='value'?Number(off.reward_value):amount*Number(off.reward_value)/100;return{cat,off,bonus};}
+function updateOffer(sel,mch,amt,el){const o=$(el);if(!o)return;const r=memberOfferFor(+$(sel).value,$(mch).value,parseFloat($(amt).value.replace(',','.'))||0);let s=r.cat?`Catégorie : <b>${r.cat}</b>`:`Catégorie : <span class="empty">enseigne non catégorisée</span>`;if(r.off)s+=` — <span class="offer">🎯 Offre campagne #${r.off.campaign_id} : +${F2(r.bonus)} €${r.off.reward_type==='percent'?' ('+Number(r.off.reward_value)+' %)':''}</span>`;o.innerHTML=s;}
+function updateOffers(){updateOffer('e_member','e_merchant','e_amount','e_offer');updateOffer('p_member','p_merchant','p_amount','p_offer');}
+
+// -------- rendu --------
+function opts(){return S.members.map(m=>`<option value="${m.member_id}">${m.display_name} (#${m.member_id})</option>`).join('');}
+function fillSelects(){['e_member','p_member','sc_member'].forEach(id=>{const el=$(id);if(!el)return;const v=el.value;el.innerHTML=opts();if(v)el.value=v;});if(!selInit&&S.members.length){const last=S.members[S.members.length-1].member_id;$('e_member').value=last;$('p_member').value=last;selInit=true;}if(!scInit&&S.members.length){$('sc_member').value=S.members[S.members.length-1].member_id;scInit=true;}}
+function renderRel(){const box=$('relEditor');const withSponsor=S.members.filter(m=>m.sponsor_member_id!=null||S.members.some(o=>o.sponsor_member_id===m.member_id));box.innerHTML=S.members.map(m=>{const o='<option value="">— aucun —</option>'+S.members.filter(x=>x.member_id!=m.member_id).map(x=>`<option value="${x.member_id}" ${m.sponsor_member_id==x.member_id?'selected':''}>${x.display_name}</option>`).join('');return `<div class="rel-row"><div><b>${m.display_name}</b> <span class="empty">#${m.member_id}</span></div><div class="arrow">→</div><div><select data-child="${m.member_id}">${o}</select></div><div></div></div>`;}).join('');}
+function roleClass(r){return r==='both'?'both':r==='parrain'?'parrain':'acheteur';}
+const TT={personal_earn:['e','earn'],sponsorship_earn:['g','parrainage'],burn:['b','burn'],reversal_earn:['b','annulation'],reversal_burn:['e','annulation'],expiration:['x','expiration'],campaign_cashback:['c','cashback']};
+// Détail d'une ligne de transaction : enseigne, n° de commande (#2), filleul à l'origine (#2), taux appliqué (#5).
+function txMeta(t){const p=[];if(t.merchant_id)p.push(t.merchant_id);if(t.order_id)p.push('cmd #'+t.order_id);if(t.counterparty_name)p.push('via '+t.counterparty_name);if(t.applied_rate&&Number(t.applied_rate)>0)p.push('taux '+(Number(t.applied_rate)*100).toFixed(2).replace(/\.?0+$/,'')+' %');return p.length?' <span class="empty">· '+p.join(' · ')+'</span>':'';}
+// Affichage "8 + menu déroulant" : le reste des lignes va dans un <details> natif
+// (anti-saturation sous bombardement). `wrapFn` enveloppe les lignes de tableau.
+function moreBlock(rest, text, wrapFn){if(!rest.length)return '';const inner=wrapFn?wrapFn(rest.join('')):rest.join('');return `<details class="morewrap"><summary>${text.replace('%n',rest.length)}</summary>${inner}</details>`;}
+const ORDER_THEAD='<tr><th>N°</th><th>Acheteur</th><th>Enseigne</th><th class="num">Montant</th><th>Date</th><th class="num">Earn distribué</th><th class="num">Bénéf.</th><th class="num">Burn</th><th>Statut</th></tr>';
+const LOT_THEAD='<tr><th>#</th><th>Membre</th><th>Origine</th><th class="num">Initial</th><th class="num">Remaining</th><th>Acquis</th><th>Fin de validité</th><th>Statut</th></tr>';
+const wrapTable=(thead)=>(inner)=>'<div style="overflow-x:auto"><table><thead>'+thead+'</thead><tbody>'+inner+'</tbody></table></div>';
+function renderMembers(){$('members').innerHTML=S.members.map(m=>{const off=(m.campaign_offers||[]);const offLine=off.length?`<div class="offer" style="margin:3px 0 5px">🎯 Éligible : ${off.map(o=>`#${o.campaign_id} ${o.category} (${o.reward_type==='value'?F2(o.reward_value)+' €':Number(o.reward_value)+' %'})`).join(' · ')}</div>`:'';
+  const alltx=(m.transactions||[]).slice().reverse();const txrows=alltx.map(t=>{const c=(TT[t.kind]||['e',''])[0];return `<div class="tx ${c}"><span>${t.label}${txMeta(t)}</span><span class="amt">${Number(t.amount)>=0?'+':''}${F6(t.amount)} €</span></div>`;});
+  const hist=txrows.length?(txrows.slice(0,8).join('')+moreBlock(txrows.slice(8),'+ %n transactions plus anciennes')):'<div class="empty">Aucune transaction</div>';
+  const tot=Number(m.transactions_total||alltx.length);const capNote=(tot>alltx.length)?`<div class="hint" style="margin:3px 0 0">${tot} transactions au total · les ${alltx.length} plus récentes ici</div>`:'';
+  const gain=Number(m.net_sponsorship_gain);const gl=(m.role==='parrain'||m.role==='both')&&Math.abs(gain)>1e-9?`<div class="hint" style="color:var(--gain);margin:0 0 4px">↑ Remontée filleuls : ${F6(gain)} €</div>`:'';
+  return `<div class="member"><div class="top"><div class="name">${m.display_name} <span class="empty">#${m.member_id}</span></div><div class="badge ${roleClass(m.role)}">${m.role}</div></div><div class="solde">${F2(m.balance)} <span class="empty" style="font-size:12px">unités (€)</span></div>${gl}${offLine}${hist}${capNote}</div>`;}).join('')||'<span class="empty">Aucun membre.</span>';}
+function lotStatusClass(s){return s==='active'?'t-active':s==='expired'?'t-expired':s==='reversed'?'t-expired':'t-consumed';}
+function renderLots(){const asof=$('asof').value||TODAY;const rows=(S.lots||[]).map(l=>{const pct=Number(l.initial_amount)>0?Math.max(0,Math.min(100,Number(l.remaining)/Number(l.initial_amount)*100)):0;const st=lotStatusClass(l.status);const soon=l.status==='active'&&(l.expires_at||'').slice(0,10)<=asof;
+  return `<tr class="${l.status==='active'?'':'consumed'}"><td>${l.id}</td><td>${l.display_name}</td><td>${l.order_id?'#'+l.order_id:'—'} · ${l.merchant_id||'—'}</td><td class="num">${F6(l.initial_amount)}</td><td class="num" style="font-weight:700">${F6(l.remaining)}<div class="bar"><i style="width:${pct}%;background:${l.status==='expired'||l.status==='reversed'?'var(--exp)':'var(--earn)'}"></i></div></td><td>${(l.earned_at||'').slice(0,10)}</td><td><input type="date" class="dinp" value="${(l.expires_at||'').slice(0,10)}" ${l.status!=='active'?'disabled':''} style="${soon?'border-color:var(--exp);background:var(--exp-bg)':''}" onchange="patchLot(${l.id},this.value)"></td><td><span class="tag2 ${st}">${l.status}</span></td></tr>`;});
+  $('lotBody').innerHTML=rows.length?rows.slice(0,8).join(''):'<tr><td colspan="8" class="empty">Aucun lot — fais un Earn.</td></tr>';
+  if($('lotMore'))$('lotMore').innerHTML=moreBlock(rows.slice(8),'+ %n lots plus anciens',wrapTable(LOT_THEAD));}
+function renderPools(){const P=S.behav.pools||{};if(!$('pools'))return;$('pools').innerHTML=(P.cic!==undefined)?[['Fonctionnement (12,5 %)',P.fonctionnement,'var(--ink)'],['Grands leaders (7,5 %)',P.grands_leaders,'var(--ink)'],['Comportemental cumulé (15 %)',P.comportemental,'var(--exp)'],['Prime de Statut cumulée (5 %)',P.prime_statut,'var(--primary)'],['Cagnotte CIC (disponible)',P.cic,'var(--cic)'],['Réservé aux campagnes actives',P.campagnes_reservees,'var(--gain)']].map(([l,v,col])=>`<div class="tx"><span>${l}</span><span class="amt" style="color:${col}">${F2(v||0)} €</span></div>`).join(''):'<span class="empty">—</span>';}
+function renderOrders(){const o=S.orders||[];if($('orderEmpty'))$('orderEmpty').style.display=o.length?'none':'block';
+  const rows=o.map(x=>`<tr class="${x.reversed?'consumed':''}"><td>#${x.order_id}</td><td>${x.buyer_name||('#'+x.buyer_id)}</td><td>${x.merchant_id||'—'}</td><td class="num">${F2(x.order_amount)} €</td><td>${(x.delivered_at||'').slice(0,10)}</td><td class="num" style="color:var(--earn);font-weight:700">${F6(x.earn_total)}</td><td class="num">${x.beneficiaries}</td><td class="num" style="color:var(--burn)">${Number(x.burn)>0?F2(x.burn)+' €':'—'}</td><td>${x.reversed?'<span class="tag2 t-expired">annulée</span>':'<span class="tag2 t-active">ok</span>'}</td></tr>`);
+  if($('orderBody'))$('orderBody').innerHTML=rows.slice(0,8).join('');
+  if($('orderMore'))$('orderMore').innerHTML=moreBlock(rows.slice(8),'+ %n commandes plus anciennes',wrapTable(ORDER_THEAD));}
+function renderScore(r,d){if(!r||r.categories===undefined){$('scoreDetail').innerHTML='<span class="empty">Aucune donnée pour ce membre.</span>';return;}
+  const rows=r.categories.map(c=>{const active=Number(c.contribution)>0;return `<tr style="${active?'':'color:var(--muted)'}"><td>${c.category}</td><td class="num">${c.max}</td><td class="num">${c.validity_months} m</td><td class="num">${F2(c.qualifying_min)} €</td><td class="num">${F2(c.cumulative)} €</td><td class="num" style="font-weight:700;color:${active?'var(--earn)':'var(--muted)'}">${F2(c.contribution)}</td><td>${c.last_recharge_at?(''+c.last_recharge_at).slice(0,10):'—'}</td></tr>`;}).join('');
+  $('scoreDetail').innerHTML=`<div style="margin:2px 0 8px">Score global de <b>${r.display_name||('#'+r.member_id)}</b> au <b>${(''+d).slice(0,10)}</b> : <span class="pill" style="background:var(--primary-weak);color:var(--primary)">${r.score} / 100</span></div><div style="overflow-x:auto"><table><thead><tr><th>Catégorie</th><th class="num">Max</th><th class="num">Valid.</th><th class="num">Seuil</th><th class="num">Cumul</th><th class="num">Contrib.</th><th>Dern. recharge</th></tr></thead><tbody>${rows}</tbody></table></div>`;}
+function renderBehav(){$('cicBal').textContent=F2(S.behav.cic_balance)+' €';$('cp_fonds').textContent=F2(S.behav.cic_balance)+' €';renderPools();
+  const r=S.behav.monthly_reports||[];$('repEmpty').style.display=r.length?'none':'block';$('repBody').innerHTML=r.map(x=>`<tr><td>${x.period}</td><td>${x.display_name}</td><td class="num">${F6(x.potentiel)}</td><td class="num">${x.score}</td><td class="num">${x.taux}</td><td class="num" style="color:var(--earn);font-weight:700">${F6(x.recompense)}</td><td class="num" style="color:var(--cic);font-weight:700">${F6(x.vers_cic)}</td></tr>`).join('');
+  const c=S.behav.campaigns||[];$('campaigns').innerHTML=c.length?c.map(x=>`<div class="tx"><span><b>#${x.id}</b> ${x.category} · ${x.reward_type==='value'?F2(x.reward_value)+' €':Number(x.reward_value)+' %'} · score ≤ ${x.eligibility_score_max} · fin ${x.end_date||'—'} <span class="tag2 ${x.status==='active'?'t-active':'t-consumed'}">${x.status}</span></span><span class="amt" style="color:var(--cic)">${F2(x.budget_spent)}/${F2(x.budget_reserved)} €</span></div>`).join(''):'<div class="empty">Aucune campagne.</div>';}
+function renderMcat(){$('mcatBody').innerHTML=S.mcats.map(m=>`<tr><td><b>${m.merchant_id}</b></td><td>${m.category}</td><td></td></tr>`).join('');const co=(S.cats.current.categories||[]).map(c=>`<option>${c.name}</option>`).join('');$('mc_cat').innerHTML=co;$('cp_cat').innerHTML=co;
+  // Enseignes en MENU DÉROULANT (bug #3) : plus de saisie libre, on choisit une enseigne catégorisée.
+  const mo=S.mcats.map(m=>`<option value="${m.merchant_id}">${m.merchant_id} · ${m.category}</option>`).join('');
+  ['e_merchant','p_merchant'].forEach(id=>{const el=$(id);if(!el)return;const v=el.value;el.innerHTML=mo;if(v&&S.mcats.some(m=>m.merchant_id===v))el.value=v;});
+  if(!mcatInit&&S.mcats.length){const pick=(pref)=>S.mcats.some(m=>m.merchant_id===pref)?pref:S.mcats[0].merchant_id;if($('e_merchant'))$('e_merchant').value=pick('CARREFOUR');if($('p_merchant'))$('p_merchant').value=pick('FNAC');mcatInit=true;}}
+function renderRates(){const rk=[['personal','Personnel'],['sponsorship','Parrainage'],['fonctionnement','Fonctionnement'],['comportemental','Comportemental'],['grands_leaders','Grands leaders']];const rc=S.rates.current.rates||{};$('rateRows').innerHTML=rk.map(([k,l])=>`<div class="row" style="grid-template-columns:1fr 90px;align-items:center;margin-bottom:6px"><label style="margin:0">${l}</label><div style="display:flex;gap:4px"><input class="rinp" id="rate_${k}" value="${(Number(rc[k]||0)*100).toFixed(3).replace(/\.?0+$/,'')}" onchange="rateSum()"> %</div></div>`).join('');rateSum();
+  $('cfgHistBody').innerHTML=(S.rates.history||[]).map(v=>`<tr><td><b>${v.version_label}</b></td><td class="num">${(Number(v.rates.personal)*100).toFixed(1)}</td><td class="num">${(Number(v.rates.sponsorship)*100).toFixed(1)}</td><td class="num">${(Number(v.rates.comportemental)*100).toFixed(1)}</td><td>${(v.effective_from||'').slice(0,10)} → ${v.effective_to?v.effective_to.slice(0,10):'—'}</td><td><span class="tag2 ${v.effective_to?'t-old':'t-cur'}">${v.statut}</span></td></tr>`).join('');}
+function rateSum(){const s=['personal','sponsorship','fonctionnement','comportemental','grands_leaders'].reduce((a,k)=>a+(parseFloat(($('rate_'+k)||{}).value?.replace(',','.'))||0),0);$('rateSum').innerHTML=`Total : <span style="color:${Math.abs(s-100)<.01?'var(--earn)':'var(--burn)'}">${F2(s)} %</span> ${Math.abs(s-100)<.01?'✓':'(=100 %)'}`;}
+function renderCats(){const cs=S.cats.current.categories||[];$('catBody').innerHTML=cs.map((c,i)=>`<tr><td>${c.name}</td><td class="num"><input class="rinp" id="cat_max${i}" value="${c.max}"></td><td class="num"><input class="rinp" id="cat_val${i}" value="${c.validity_months}"></td><td class="num"><input class="rinp" id="cat_min${i}" value="${c.qualifying_min}"></td></tr>`).join('');const tot=cs.reduce((a,c)=>a+Number(c.max),0);$('catSum').innerHTML=`Total des « max » : <span style="color:${tot==100?'var(--earn)':'var(--burn)'}">${tot}</span> / 100`;
+  $('catHistBody').innerHTML=(S.cats.history||[]).map(v=>`<tr><td><b>${v.version_label}</b></td><td>${(v.effective_from||'').slice(0,10)} → ${v.effective_to?v.effective_to.slice(0,10):'—'}</td><td><span class="tag2 ${v.effective_to?'t-old':'t-cur'}">${v.statut}</span></td></tr>`).join('');}
+function renderScale(){const ts=S.scale.current.tranches||[];$('scaleBody').innerHTML=ts.map((t,i)=>`<tr><td><input class="rinp" id="sc0${i}" value="${t[0]}"></td><td><input class="rinp" id="sc1${i}" value="${t[1]}"></td><td class="num"><input class="rinp" id="sc2${i}" value="${t[2]}"></td></tr>`).join('');
+  $('scaleHistBody').innerHTML=(S.scale.history||[]).map(v=>`<tr><td><b>${v.version_label}</b></td><td>${(v.effective_from||'').slice(0,10)} → ${v.effective_to?v.effective_to.slice(0,10):'—'}</td><td><span class="tag2 ${v.effective_to?'t-old':'t-cur'}">${v.statut}</span></td></tr>`).join('');}
+function renderKpis(){const total=S.members.reduce((s,m)=>s+Number(m.balance),0);const lotsA=S.lots.filter(l=>l.status==='active').length;$('kpis').innerHTML=`<div class="kpi"><div class="v">${F2(total)} €</div><div class="l">Unités en circulation</div></div><div class="kpi"><div class="v">${lotsA}</div><div class="l">Lots actifs</div></div><div class="kpi"><div class="v">${F2(S.behav.cic_balance)} €</div><div class="l">Cagnotte CIC</div></div><div class="kpi"><div class="v">${(S.rates.current.version_label)||'—'}</div><div class="l">Config courante</div></div>`;}
+function render(){renderKpis();fillSelects();renderRel();renderMembers();renderOrders();renderLots();renderBehav();renderMcat();renderRates();renderCats();renderScale();updateOffers();}
+
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.tabpane').forEach(p=>p.classList.remove('active'));$('pane-'+b.dataset.t).classList.add('active');if(b.dataset.t==='v5')loadV5();});
+$('asof').value=TODAY;['e_date','p_date','sc_date'].forEach(id=>{if($(id))$(id).value=TODAY;}); loadAll();
+</script>
+</body>
+</html>

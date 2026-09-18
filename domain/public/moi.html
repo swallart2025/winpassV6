@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Winpass — Mon cashback</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--line:#334155;--ink:#f8fafc;--ink2:#cbd5e1;--muted:#94a3b8;
+    --accent:#22c55e;--accent2:#4f46e5;--warn:#f59e0b;--radius:16px;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;max-width:480px;margin:0 auto;padding-bottom:40px}
+  header{padding:20px 20px 8px} header h1{margin:0;font-size:20px;font-weight:700}
+  header p{margin:2px 0 0;color:var(--muted);font-size:13px}
+  .idbar{display:flex;gap:8px;padding:10px 20px}
+  .idbar input{flex:1;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:14px}
+  .idbar button{padding:9px 14px;border:none;border-radius:10px;background:var(--accent2);color:#fff;font-weight:600;cursor:pointer}
+  main{padding:8px 20px;display:flex;flex-direction:column;gap:14px}
+  .hero{background:linear-gradient(135deg,#16a34a,#22c55e);border-radius:var(--radius);padding:20px;color:#fff}
+  .hero .lab{font-size:12px;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
+  .hero .val{font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;margin:4px 0}
+  .hero .sub{font-size:13px;opacity:.95}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .card h2{margin:0 0 10px;font-size:14px;font-weight:700;color:var(--ink2)}
+  .line{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+  .line:first-of-type{border-top:none}
+  .line .amt{font-weight:700;font-variant-numeric:tabular-nums}
+  .pending{color:var(--warn)}
+  .prog{height:8px;border-radius:6px;background:#0b1220;overflow:hidden;margin:10px 0 4px}
+  .prog>i{display:block;height:100%;background:var(--warn)}
+  .btn{width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#04240f;font-weight:800;font-size:15px;cursor:pointer;margin-top:12px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .muted{color:var(--muted);font-size:12.5px}
+  .autres .line .amt{color:var(--ink2);font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.45}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mon cashback Winpass</h1>
+  <p>Votre générosité, convertie en Crédit Winpass.</p>
+</header>
+<div class="idbar">
+  <input id="mid" type="number" placeholder="N° de membre (ex : 900)" value="900">
+  <button onclick="load()">Voir</button>
+</div>
+<main id="app"></main>
+
+<script>
+const $ = (h)=>{const d=document.createElement('div');d.innerHTML=h;return d.firstElementChild;};
+const eur = (v)=> (Number(v||0)).toFixed(2).replace('.',',')+' €';
+
+async function api(path, opts){ const r = await fetch(path, opts); return {ok:r.ok, body: await r.json().catch(()=>({}))}; }
+
+async function load(){
+  const id = document.getElementById('mid').value;
+  if(!id) return;
+  const app = document.getElementById('app'); app.innerHTML = '<p class="muted">Chargement…</p>';
+  try{
+    const cb = await api(`/v1/cashback?member_id=${id}`);
+    const pv = await api(`/v1/parrain?member_id=${id}`);
+    if(!cb.ok){ app.innerHTML = '<p class="muted">Membre introuvable.</p>'; return; }
+    render(id, cb.body, pv.ok ? pv.body : null);
+  }catch(e){
+    app.innerHTML = '<p class="muted">API indisponible — lancez l\'application (docker compose up) puis réessayez.</p>';
+  }
+}
+
+function render(id, cb, pv){
+  const app = document.getElementById('app'); app.innerHTML='';
+  const credit = Number(cb.credit_winpass_amount||0);
+  const pending = Number(cb.pending_amount||0);
+  const seuil = Number(cb.config?.threshold_eur||20);
+  const pct = Math.min(100, seuil>0 ? (pending/seuil*100) : 0);
+
+  app.appendChild($(`<div class="hero">
+    <div class="lab">Crédit Winpass disponible</div>
+    <div class="val">${eur(credit)}</div>
+    <div class="sub">Cumul à vie : ${eur(cb.lifetime_cashback)}</div>
+  </div>`));
+
+  const pcard = $(`<div class="card">
+    <h2>Cashback en attente de conversion</h2>
+    <div class="line"><span>En attente</span><span class="amt pending">${eur(pending)}</span></div>
+    <div class="prog"><i style="width:${pct}%"></i></div>
+    <div class="muted">Conversion automatique dès ${eur(seuil)} atteints, ou chaque ${cb.config?.cadence_days||7} jours.</div>
+  </div>`);
+  const btn = $(`<button class="btn" ${pending<=0?'disabled':''}>Convertir maintenant (${eur(pending)})</button>`);
+  btn.onclick = async ()=>{ btn.disabled=true; btn.textContent='Conversion…'; await api(`/v1/cashback/convert`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({member_id:id})}); load(); };
+  pcard.appendChild(btn);
+  app.appendChild(pcard);
+
+  if(pv){
+    const a = pv.autres_poches || {};
+    app.appendChild($(`<div class="card autres">
+      <h2>Mes autres poches (compteur global)</h2>
+      <div class="line"><span>Parrainage reçu</span><span class="amt">${eur(a.parrainage_recu)}</span></div>
+      <div class="line"><span>Prime de Statut</span><span class="amt">${eur(a.prime_statut)}</span></div>
+      <div class="line"><span>Grande Galerie</span><span class="amt">${eur(a.comportemental)}</span></div>
+      <div class="line"><span>Bâtisseurs</span><span class="amt">${eur(a.grands_leaders)}</span></div>
+      <div class="line"><span>Fonctionnement</span><span class="amt">${eur(a.fonctionnement)}</span></div>
+      <p class="note">Informationnel : ces poches sont réparties par les mécaniques du Club, en % du taux de commission.</p>
+    </div>`));
+
+    const dir = pv.direct||[]; const deep = pv.deeper||{by_generation:{}};
+    let deepHtml = Object.entries(deep.by_generation||{}).map(([g,n])=>`<div class="line"><span>Génération ${g}</span><span class="amt">${n} membre(s)</span></div>`).join('') || '<div class="muted">—</div>';
+    app.appendChild($(`<div class="card">
+      <h2>Mon réseau de parrainage</h2>
+      <div class="muted" style="margin-bottom:6px">Filleuls directs : ${dir.length}</div>
+      ${dir.map(f=>`<div class="line"><span>${f.display_name}</span><span class="amt" style="color:${f.active?'var(--accent)':'var(--muted)'}">${f.active?'actif':'inactif'}</span></div>`).join('') || '<div class="muted">Aucun filleul direct.</div>'}
+      <h2 style="margin-top:14px">Niveaux suivants (anonymisés)</h2>
+      ${deepHtml}
+      ${pv.eligible_to_enroll ? '<p class="note">✅ Vous pouvez parrainer de nouveaux membres.</p>' : '<p class="note">⏳ Le parrainage s\\'ouvre après 15 jours d\\'ancienneté d\\'achat.</p>'}
+    </div>`));
+  }
+}
+load();
+</script>
+</body>
+</html>
